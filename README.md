@@ -1,5 +1,6 @@
 # json-parse-by-php
 
+> Just to learn JSON parsing.
 
 ```php
 <?php
@@ -34,7 +35,6 @@ JSON
 }
 
 // php8 parser.php | sed 's/^/\/\/ /g'
-// output
 // array(5) {
 //   ["a"]=>
 //   int(100)
