@@ -1,11 +1,11 @@
-# json-parse-by-php
+# JSON parsing by PHP
 
 > Just to learn JSON parsing.
 
 ```php
 <?php
 
-require_once __DIR__ . '/parser.php';
+require_once __DIR__ . '/Parser.php';
 
 
 try {
