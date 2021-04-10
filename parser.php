@@ -89,28 +89,31 @@ class Parser
     }
 
     /**
-     * @return string|array|int|float|null
+     * @return string|array|int|float|null|bool
      * @throws Exception
      */
-    protected function parseValue(): string|array|null|int|float
+    protected function parseValue(): string|array|null|int|float|bool
     {
         $value = $this->parseString()
             ?: ($this->parseObject()
                 ?: ($this->parseArray()
                     ?: ($this->parseNumber()
                         ?: ($this->parseKeyword('true', true))
-                            ?: ($this->parseKeyword('false', false)
-                                ?: ($this->parseKeyword('null', null))))));
+                            ?: ($this->parseKeyword('null', null)))));
+        if (!$value) {
+            $value = $this->parseKeyword('false', false);
+        }
         $this->skipWhiteSpace();
         return $value;
     }
 
-    protected function parseKeyword($name, $value)
+    protected function parseKeyword($name, $value): bool|null
     {
         if (substr($this->str, $this->l, strlen($name)) === $name) {
             $this->l += strlen($name);
             return $value;
         }
+        return null;
     }
 
     /**
@@ -216,7 +219,12 @@ try {
       "d": 3
     }]
   },
-  "e": 2.3
+  "e": 2.3,
+  "de": {
+    "true": true,
+    "false": false,
+    "null": null
+  }
 }
 JSON
     );
