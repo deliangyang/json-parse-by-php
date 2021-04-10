@@ -50,26 +50,26 @@ class ToJson
             return '[]';
         }
         $isObj = 'object';
-        $s = [];
+        $subItems = [];
         $indent++;
         $start = 0;
         foreach ($obj as $k => $value) {
             if ($k === $start) {
                 $isObj = 'array';
-                $s[] = $this->encode($value, $indent, $pretty);
+                $subItems[] = $this->encode($value, $indent, $pretty);
                 $start++;
             } else {
-                $s[] = sprintf('"%s": %s', $k, $this->encode($value, $indent, $pretty));
+                $subItems[] = sprintf('"%s": %s', $k, $this->encode($value, $indent, $pretty));
             }
         }
         if (!$pretty) {
             return 'object' === $isObj
-                ? '{' . implode(', ', $s) . '}'
-                : '[' . implode(', ', $s) . ']';
+                ? '{' . implode(', ', $subItems) . '}'
+                : '[' . implode(', ', $subItems) . ']';
         }
         $prefix = $this->indent($indent);
         $shortPrefix = $this->indent($indent - 1);
-        $itemStr = implode(', ' . PHP_EOL . $prefix, $s);
+        $itemStr = implode(', ' . PHP_EOL . $prefix, $subItems);
 
         $result = 'object' === $isObj
             ? '{' . PHP_EOL . $prefix . $itemStr . PHP_EOL . $shortPrefix . '}'
