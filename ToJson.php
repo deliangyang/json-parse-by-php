@@ -45,10 +45,13 @@ class ToJson
                     ? '{' . PHP_EOL .
                         $this->indent($indent) . implode(', ' . PHP_EOL .
                         $this->indent($indent), $s) . PHP_EOL .
-                    $this->indent($indent - 1) . '}'
+                        $this->indent($indent - 1) .
+                    '}'
                     : '[' . PHP_EOL .
-                        $this->indent($indent) . implode(', ' . PHP_EOL . $this->indent($indent), $s) . PHP_EOL .
-                    $this->indent($indent - 1) . ']';
+                        $this->indent($indent) . implode(', ' . PHP_EOL .
+                        $this->indent($indent), $s) . PHP_EOL .
+                        $this->indent($indent - 1) .
+                    ']';
                 $indent--;
                 return $result;
             } else {
