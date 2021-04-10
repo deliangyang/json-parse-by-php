@@ -40,27 +40,25 @@ class ToJson
                     $s[] = sprintf('"%s": %s', $k, $this->encode($value, $indent, $pretty));
                 }
             }
-            if ($pretty) {
-                $result = 'object' === $isObj
-                    ? '{' . PHP_EOL .
-                        $this->indent($indent) . implode(', ' . PHP_EOL .
-                        $this->indent($indent), $s) . PHP_EOL .
-                        $this->indent($indent - 1) .
-                    '}'
-                    : '[' . PHP_EOL .
-                        $this->indent($indent) . implode(', ' . PHP_EOL .
-                        $this->indent($indent), $s) . PHP_EOL .
-                        $this->indent($indent - 1) .
-                    ']';
-                $indent--;
-                return $result;
-            } else {
+            if (!$pretty) {
                 return 'object' === $isObj
                     ? '{' . implode(', ', $s) . '}'
                     : '[' . implode(', ', $s) . ']';
             }
+            $prefix = $this->indent($indent);
+            $shortPrefix = $this->indent($indent - 1);
 
+            $result = 'object' === $isObj
+                ? '{' . PHP_EOL .
+                $prefix . implode(', ' . PHP_EOL . $prefix, $s) . PHP_EOL .
+                $shortPrefix . '}'
+                : '[' . PHP_EOL .
+                $prefix . implode(', ' . PHP_EOL . $prefix, $s) . PHP_EOL .
+                $shortPrefix . ']';
+            $indent--;
+            return $result;
         }
+
         throw new \Exception('unknown struct');
     }
 
