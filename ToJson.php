@@ -49,13 +49,13 @@ class ToJson
         if (0 === $count) {
             return '[]';
         }
-        $isObj = 'object';
+        $itemType = 'object';
         $subItems = [];
         $indent++;
         $start = 0;
         foreach ($obj as $k => $value) {
             if ($start > 0 && $k === $start) {
-                $isObj = 'array';
+                $itemType = 'array';
                 $subItems[] = $this->encode($value, $indent, $pretty);
                 $start++;
             } else {
@@ -64,7 +64,7 @@ class ToJson
             }
         }
         if (!$pretty) {
-            return 'object' === $isObj
+            return 'object' === $itemType
                 ? '{' . implode(', ', $subItems) . '}'
                 : '[' . implode(', ', $subItems) . ']';
         }
@@ -72,7 +72,7 @@ class ToJson
         $shortPrefix = $this->indent($indent - 1);
         $itemStr = implode(', ' . PHP_EOL . $prefix, $subItems);
 
-        $result = 'object' === $isObj
+        $result = 'object' === $itemType
             ? '{' . PHP_EOL . $prefix . $itemStr . PHP_EOL . $shortPrefix . '}'
             : '[' . PHP_EOL . $prefix . $itemStr . PHP_EOL . $shortPrefix . ']';
         $indent--;
