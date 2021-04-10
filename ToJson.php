@@ -54,11 +54,12 @@ class ToJson
         $indent++;
         $start = 0;
         foreach ($obj as $k => $value) {
-            if ($k === $start) {
+            if ($start > 0 && $k === $start) {
                 $isObj = 'array';
                 $subItems[] = $this->encode($value, $indent, $pretty);
                 $start++;
             } else {
+                $start = -1;
                 $subItems[] = sprintf('"%s": %s', $k, $this->encode($value, $indent, $pretty));
             }
         }
