@@ -52,10 +52,12 @@ class ToJson
         $isObj = 'object';
         $s = [];
         $indent++;
+        $start = 0;
         foreach ($obj as $k => $value) {
-            if (is_int($k)) {
+            if ($k === $start) {
                 $isObj = 'array';
                 $s[] = $this->encode($value, $indent, $pretty);
+                $start++;
             } else {
                 $s[] = sprintf('"%s": %s', $k, $this->encode($value, $indent, $pretty));
             }
