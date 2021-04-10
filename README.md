@@ -84,6 +84,7 @@ try {
     $toJSON = new ToJson();
     $res = $toJSON->stringify([1, 2, 4.3, 3, ['a' => 'b', 'c' => 1, 'd' => [1, 2, 3]]]);
     echo $res, PHP_EOL;
+    echo PHP_EOL;
     var_dump(json_decode($res, true));
     echo PHP_EOL;
     $res = $toJSON->stringify([
@@ -92,67 +93,113 @@ try {
         'd' => true,
         'null' => null,
         'c' => -1,
-        'eee' => [1, 2, 3],
+        'eee' => [1, 2, 3, [
+            'c' => [
+                'a' => 'c',
+                'c' => [2, 3]
+            ]
+        ]],
         'string' => 'sfsadf"sdfsadfsf'
-    ]);
+    ], true);
     echo $res, PHP_EOL;
+    echo PHP_EOL;
     var_dump(json_decode($res, true));
 } catch (\Exception $ex) {
     var_dump($ex->getMessage());
 }
 
-// [1, 2, 4.3, 3, {"a": "b", "c": 1, "d": [1, 2, 3]}]
-// array(5) {
-//   [0]=>
-//   int(1)
-//   [1]=>
-//   int(2)
-//   [2]=>
-//   float(4.3)
-//   [3]=>
-//   int(3)
-//   [4]=>
-//   array(3) {
-//     ["a"]=>
-//     string(1) "b"
-//     ["c"]=>
-//     int(1)
-//     ["d"]=>
-//     array(3) {
-//       [0]=>
-//       int(1)
-//       [1]=>
-//       int(2)
-//       [2]=>
-//       int(3)
-//     }
-//   }
-// }
-// 
-// {"a": 2.3, "b": false, "d": true, "null": null, "c": -1, "eee": [1, 2, 3], "string": "sfsadf\"sdfsadfsf"}
-// array(7) {
-//   ["a"]=>
-//   float(2.3)
-//   ["b"]=>
-//   bool(false)
-//   ["d"]=>
-//   bool(true)
-//   ["null"]=>
-//   NULL
-//   ["c"]=>
-//   int(-1)
-//   ["eee"]=>
-//   array(3) {
-//     [0]=>
-//     int(1)
-//     [1]=>
-//     int(2)
-//     [2]=>
-//     int(3)
-//   }
-//   ["string"]=>
-//   string(16) "sfsadf"sdfsadfsf"
-// }
+// php8 test.php | sed 's/^/\/\/  /g'
+//  [1, 2, 4.3, 3, {"a": "b", "c": 1, "d": [1, 2, 3]}]
+//  
+//  array(5) {
+//    [0]=>
+//    int(1)
+//    [1]=>
+//    int(2)
+//    [2]=>
+//    float(4.3)
+//    [3]=>
+//    int(3)
+//    [4]=>
+//    array(3) {
+//      ["a"]=>
+//      string(1) "b"
+//      ["c"]=>
+//      int(1)
+//      ["d"]=>
+//      array(3) {
+//        [0]=>
+//        int(1)
+//        [1]=>
+//        int(2)
+//        [2]=>
+//        int(3)
+//      }
+//    }
+//  }
+//  
+//  {
+//    "a": 2.3, 
+//    "b": false, 
+//    "d": true, 
+//    "null": null, 
+//    "c": -1, 
+//    "eee": [
+//      1, 
+//      2, 
+//      3, 
+//      {
+//        "c": {
+//          "a": "c", 
+//          "c": [
+//            2, 
+//            3
+//          ]
+//        }
+//      }
+//    ], 
+//    "string": "sfsadf\"sdfsadfsf"
+//  }
+//  
+//  array(7) {
+//    ["a"]=>
+//    float(2.3)
+//    ["b"]=>
+//    bool(false)
+//    ["d"]=>
+//    bool(true)
+//    ["null"]=>
+//    NULL
+//    ["c"]=>
+//    int(-1)
+//    ["eee"]=>
+//    array(4) {
+//      [0]=>
+//      int(1)
+//      [1]=>
+//      int(2)
+//      [2]=>
+//      int(3)
+//      [3]=>
+//      array(1) {
+//        ["c"]=>
+//        array(2) {
+//          ["a"]=>
+//          string(1) "c"
+//          ["c"]=>
+//          array(2) {
+//            [0]=>
+//            int(2)
+//            [1]=>
+//            int(3)
+//          }
+//        }
+//      }
+//    }
+//    ["string"]=>
+//    string(16) "sfsadf"sdfsadfsf"
+//  }
+
 
 
 ```
