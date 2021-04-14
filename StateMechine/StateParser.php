@@ -150,7 +150,7 @@ class StateParser
         $this->state = self::EXPECT_STRING_VALUE | self::EXPECT_BEGIN_ARRAY | self::EXPECT_BEGIN_OBJECT;
         for (; ;) {
             $token = $this->nextToken();
-            echo implode(' => ', [Token::token2name($token), $this->state()]), PHP_EOL;
+            // echo implode(' => ', [Token::token2name($token), $this->state()]), PHP_EOL;
             switch ($token) {
                 case Token::OBJECT_BEGIN:
                     if ($this->hasState(self::EXPECT_BEGIN_OBJECT)) {
@@ -187,35 +187,54 @@ class StateParser
                 case Token::ARRAY_BEGIN:
                     if ($this->hasState(self::EXPECT_BEGIN_ARRAY)) {
                         array_push($stack, []);
-                        $this->state = self::EXPECT_ARRAY_VALUE | self::EXPECT_BEGIN_OBJECT
-                            | self::EXPECT_BEGIN_ARRAY | self::EXPECT_END_ARRAY;
+                        $this->state = self::EXPECT_ARRAY_VALUE | self::EXPECT_BEGIN_OBJECT | self::EXPECT_BEGIN_ARRAY | self::EXPECT_END_ARRAY;
                         break;
                     }
-                    throw new \Exception('unexpected char [ .');
+                    throw new \Exception(sprintf(
+                        'expected char [, but got %s, current state: %s',
+                        Token::token2name($token),
+                        $this->state()
+                    ));
                 case Token::ARRAY_END:
                     if ($this->hasState(self::EXPECT_END_ARRAY)) {
-                        $value = array_pop($stack);
-                        if (0 === count($stack)) {
-                            array_push($stack, $value);
+                        if (1 >= count($stack)) {
                             $this->state = self::EXPECT_END_DOCUMENT;
                             break;
                         }
                         $val = array_pop($stack);
-                        if (is_string($val)) {
-                            $object = array_pop($stack);
-                            $object[$val] = $value;
-                            array_push($stack, $object);
-                            $this->state = self::EXPECT_COMMA | self::EXPECT_END_ARRAY;
-                        }
-                        if (is_array($val)) {
-                            $val[] = $value;
+                        $first = array_pop($stack);
+                        //var_dump($first);
+                        if (is_string($first)) {
+
+                        } else if (is_array($first)) {
+                            array_push($stack, $first);
                             array_push($stack, $val);
-                            $this->state = self::EXPECT_COMMA | self::EXPECT_END_OBJECT;
+                            var_dump($stack);
+                            $this->state = self::EXPECT_COMMA | self::EXPECT_END_ARRAY;
                             break;
                         }
+//                        var_dump(str_repeat('-', 100));
+//                        var_dump($stack, $val);
+//                        var_dump(str_repeat('-', 100));
+//                        if (is_string($val)) {
+//                            $object = array_pop($stack);
+//                            $object[$val] = $value;
+//                            array_push($stack, $object);
+//                            $this->state = self::EXPECT_COMMA | self::EXPECT_END_ARRAY;
+//                        }
+//                        if (is_array($val)) {
+//                            $val[] = $value;
+//                            array_push($stack, $val);
+//                            $this->state = self::EXPECT_COMMA | self::EXPECT_END_OBJECT;
+//                            break;
+//                        }
                         break;
                     }
-                    throw new \Exception('unexpected char ] .');
+                    throw new \Exception(sprintf(
+                        'expected char ], but got %s, current state: %s',
+                        Token::token2name($token),
+                        $this->state()
+                    ));
                 case Token::NUMBER:
                     break;
                 case Token::STRING:
@@ -278,7 +297,11 @@ class StateParser
                             return $value;
                         }
                     }
-                    throw new \Exception('Unexpected EOF.');
+                    throw new \Exception(sprintf(
+                        'expected char EOF , but got %s, current state: %s',
+                        Token::token2name($token),
+                        $this->state()
+                    ));
                 case Token::COMMA:
                     // ,
                     if ($this->hasState(self::EXPECT_COMMA)) {
@@ -290,16 +313,28 @@ class StateParser
                             break;
                         }
                     }
-                    throw new \Exception('unexpected char ,');
+                    throw new \Exception(sprintf(
+                        'expected char "," , but got %s, current state: %s',
+                        Token::token2name($token),
+                        $this->state()
+                    ));
                 case Token::COLON:
                     // :
                     if (self::EXPECT_COLON === $this->state) {
                         $this->state = self::EXPECT_OBJECT_VALUE | self::EXPECT_BEGIN_OBJECT | self::EXPECT_BEGIN_ARRAY;
                         break;
                     }
-                    throw new \Exception('unexpected char ,');
+                    throw new \Exception(sprintf(
+                        'expected char ":", but got %s, current state: %s',
+                        Token::token2name($token),
+                        $this->state()
+                    ));
                 default:
-                    throw new \Exception('unknown token: ' . $token);
+                    throw new \Exception(sprintf(
+                        'unknown token %s, current state: %s',
+                        Token::token2name($token),
+                        $this->state()
+                    ));
             }
         }
     }
@@ -361,7 +396,7 @@ class StateParser
 //
 //$d = json_encode(false);
 //echo $d, PHP_EOL;
-$res = json_encode([['a', 'b'], ['c', 'd',], 'd', ['a' => 'b', 'c' => 'd',]]);
+$res = json_encode(['a', 'b', 'c', ['a', 'b', ]]);
 //$res = json_encode(['a' => 'b', 'c' => 'd', 'e' => ['a', 'b', 'c',], 'cd' => ['d' => 'e']]);
 echo $res, PHP_EOL;
 $stateParser = new StateParser($res);
