@@ -13,4 +13,23 @@ final class Token
     const STRING = 256;           // "..."
     const BOOLEAN = 512;          // true/false
     const VALUE_NULL = 1024;      // null
+
+    const TokenMap = [
+        self::END => 'EOF',
+        self::OBJECT_BEGIN => '{',
+        self::OBJECT_END => '}',
+        self::ARRAY_BEGIN => '[',
+        self::ARRAY_END => ']',
+        self::NUMBER => 'NUMBER',
+        self::COLON => ':',
+        self::COMMA => ',',
+        self::STRING => 'STRING',
+        self::BOOLEAN => 'BOOLEAN',
+        self::VALUE_NULL => 'NULL',
+    ];
+
+    public static function token2name(int $token): string
+    {
+        return self::TokenMap[$token] ?? '';
+    }
 }

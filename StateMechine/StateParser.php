@@ -28,6 +28,20 @@ class StateParser
 
     const EXPECT_ARRAY_VALUE = 0x400;
 
+    protected array $stateMap = [
+        self::EXPECT_STRING_VALUE => 'EXPECT_STRING_VALUE',
+        self::EXPECT_BEGIN_OBJECT => 'EXPECT_BEGIN_OBJECT',
+        self::EXPECT_BEGIN_ARRAY => 'EXPECT_BEGIN_ARRAY',
+        self::EXPECT_END_DOCUMENT => 'EXPECT_END_DOCUMENT',
+        self::EXPECT_COMMA => 'EXPECT_COMMA',
+        self::EXPECT_COLON => 'EXPECT_COLON',
+        self::EXPECT_OBJECT_KEY => 'EXPECT_OBJECT_KEY',
+        self::EXPECT_OBJECT_VALUE => 'EXPECT_OBJECT_VALUE',
+        self::EXPECT_END_OBJECT => 'EXPECT_END_OBJECT',
+        self::EXPECT_END_ARRAY => 'EXPECT_END_ARRAY',
+        self::EXPECT_ARRAY_VALUE => 'EXPECT_ARRAY_VALUE',
+    ];
+
     protected string $json;
 
     protected int $p = 0;
@@ -107,11 +121,12 @@ class StateParser
                 case ']':
                     $this->p++;
                     return Token::ARRAY_END;
+                case ',':
+                    $this->p++;
+                    return Token::COMMA;
                 case ':':
                     $this->p++;
                     return Token::COLON;
-                case ',':
-                    return Token::COMMA;
                 case '"':
                     return Token::STRING;
                 case 'f':
@@ -135,6 +150,7 @@ class StateParser
         $this->state = self::EXPECT_STRING_VALUE | self::EXPECT_BEGIN_ARRAY | self::EXPECT_BEGIN_OBJECT;
         for (; ;) {
             $token = $this->nextToken();
+            echo implode(' => ', [Token::token2name($token), $this->state()]), PHP_EOL;
             switch ($token) {
                 case Token::OBJECT_BEGIN:
                     if ($this->hasState(self::EXPECT_BEGIN_OBJECT)) {
@@ -152,7 +168,6 @@ class StateParser
                     if ($this->hasState(self::EXPECT_END_OBJECT)) {
                         $lastValue = array_pop($stack);
                         // var_dump($lastValue, $stack);
-                        var_dump($stack);
                         $topValue = array_pop($stack);
                         if (is_string($topValue)) {
                             $object = array_pop($stack);
@@ -162,19 +177,8 @@ class StateParser
                             break;
                         } else if (is_array($topValue)) {
                             // 前面是一个数组
-                            $objectKey = array_pop($topValue);
-                            var_dump($objectKey, $topValue);
-//                            $object = array_pop($stack);
-//
-//                            $object[$objectKey] = $lastValue;
-//                            array_push($stack, $object);
-//                            var_dump($object);
-                            //var_dump($objectKey);
-//
-//                            //$object = array_pop($stack);
-//                            $topValue[$objectKey] = $lastValue;
-//                            array_push($stack, $topValue);
-//                            var_dump($stack);
+                            $topValue[] = $lastValue;
+                            array_push($stack, $topValue);
                             $this->state = self::EXPECT_COMMA | self::EXPECT_END_ARRAY;
                             break;
                         }
@@ -197,17 +201,18 @@ class StateParser
                             break;
                         }
                         $val = array_pop($stack);
+                        if (is_string($val)) {
+                            $object = array_pop($stack);
+                            $object[$val] = $value;
+                            array_push($stack, $object);
+                            $this->state = self::EXPECT_COMMA | self::EXPECT_END_ARRAY;
+                        }
                         if (is_array($val)) {
                             $val[] = $value;
                             array_push($stack, $val);
                             $this->state = self::EXPECT_COMMA | self::EXPECT_END_OBJECT;
                             break;
                         }
-                        $key = array_pop($stack);
-                        $array = array_pop($stack);
-                        $array[$key] = $value;
-                        array_push($stack, $array);
-                        $this->state = self::EXPECT_COMMA | self::EXPECT_END_ARRAY;
                         break;
                     }
                     throw new \Exception('unexpected char ] .');
@@ -235,11 +240,8 @@ class StateParser
                         $value = $this->readString();
                         $key = array_pop($stack);
                         $object = array_pop($stack);
-                        var_dump($key, $object, $value);
                         $object[$key] = $value;
-
                         array_push($stack, $object);
-
                         $this->state = self::EXPECT_COMMA | self::EXPECT_END_OBJECT;
                         break;
                     }
@@ -278,12 +280,24 @@ class StateParser
                     }
                     throw new \Exception('Unexpected EOF.');
                 case Token::COMMA:
-                    $this->p++;
-                    $this->state = self::EXPECT_ARRAY_VALUE | self::EXPECT_BEGIN_ARRAY | self::EXPECT_BEGIN_OBJECT;
-                    break;
+                    // ,
+                    if ($this->hasState(self::EXPECT_COMMA)) {
+                        if ($this->hasState(self::EXPECT_END_OBJECT)) {
+                            $this->state = self::EXPECT_OBJECT_KEY;
+                            break;
+                        } else if ($this->hasState(self::EXPECT_END_ARRAY)) {
+                            $this->state = self::EXPECT_ARRAY_VALUE | self::EXPECT_BEGIN_ARRAY | self::EXPECT_BEGIN_OBJECT;
+                            break;
+                        }
+                    }
+                    throw new \Exception('unexpected char ,');
                 case Token::COLON:
-                    $this->state = self::EXPECT_OBJECT_VALUE | self::EXPECT_BEGIN_OBJECT | self::EXPECT_BEGIN_ARRAY;
-                    break;
+                    // :
+                    if (self::EXPECT_COLON === $this->state) {
+                        $this->state = self::EXPECT_OBJECT_VALUE | self::EXPECT_BEGIN_OBJECT | self::EXPECT_BEGIN_ARRAY;
+                        break;
+                    }
+                    throw new \Exception('unexpected char ,');
                 default:
                     throw new \Exception('unknown token: ' . $token);
             }
@@ -317,6 +331,20 @@ class StateParser
         throw new \Exception('except boolean value');
     }
 
+    /**
+     * @return string
+     */
+    protected function state(): string
+    {
+        $states = [];
+        foreach ($this->stateMap as $state => $name) {
+            if ($state & $this->state) {
+                $states[] = $name;
+            }
+        }
+        return implode(', ', $states);
+    }
+
 }
 
 //$d = json_encode(true);
@@ -334,7 +362,7 @@ class StateParser
 //$d = json_encode(false);
 //echo $d, PHP_EOL;
 $res = json_encode([['a', 'b'], ['c', 'd',], 'd', ['a' => 'b', 'c' => 'd',]]);
-$res = json_encode(['a' => 'b', 'c' => 'd', 'e' => ['a', 'b', 'c',], 'cd' => ['d' => 'e']]);
+//$res = json_encode(['a' => 'b', 'c' => 'd', 'e' => ['a', 'b', 'c',], 'cd' => ['d' => 'e']]);
 echo $res, PHP_EOL;
 $stateParser = new StateParser($res);
 
