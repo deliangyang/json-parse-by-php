@@ -15,6 +15,14 @@ $testcases = [
     [null,],
     [null, null, null],
     ['a' => null, 'b' => null, 'c' => true, 'd' => false,],
+    1,
+    1000,
+    10.0,
+    -12,
+    -12.03,
+    -12.e3,
+    ['aa' => -12,],
+    [-12.3, 2.e3, 33e2,],
 ];
 
 foreach ($testcases as $testcase) {

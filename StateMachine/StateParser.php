@@ -132,9 +132,10 @@ class StateParser
                     return Token::BOOLEAN;
                 case 'n':
                     return Token::VALUE_NULL;
+                case '-':
+                    return Token::NUMBER;
             }
             if ($ch >= '0' && $ch <= '9') {
-                $this->p++;
                 return Token::NUMBER;
             }
         }
@@ -230,6 +231,26 @@ class StateParser
                         $this->state()
                     ));
                 case Token::NUMBER:
+                    if ($this->hasState(self::EXPECT_SINGLE_VALUE)) {
+                        array_push($stack, $this->readNumber());
+                        $this->state = self::EXPECT_END_DOCUMENT;
+                        break;
+                    } else if ($this->hasState(self::EXPECT_ARRAY_VALUE)) {
+                        $number = $this->readNumber();
+                        $array = array_pop($stack);
+                        $array[] = $number;
+                        array_push($stack, $array);
+                        $this->state = self::EXPECT_COMMA | self::EXPECT_END_ARRAY;
+                        break;
+                    } else if ($this->hasState(self::EXPECT_OBJECT_VALUE)) {
+                        $number = $this->readNumber();
+                        $key = array_pop($stack);
+                        $object = array_pop($stack);
+                        $object[$key] = $number;
+                        array_push($stack, $object);
+                        $this->state = self::EXPECT_COMMA | self::EXPECT_END_OBJECT;
+                        break;
+                    }
                     break;
                 case Token::STRING:
                     if ($this->hasState(self::EXPECT_SINGLE_VALUE)) {
@@ -394,6 +415,45 @@ class StateParser
             return true;
         }
         throw new \Exception('except null value');
+    }
+
+    protected function readNumber(): int|float
+    {
+        $start = $this->p;
+        if ($this->json[$this->p] === '-') $this->p++;
+        if ($this->json[$this->p] === '0') {
+            $this->p++;
+        } else if ($this->json[$this->p] >= '1' && $this->json[$this->p] <= '9') {
+            $this->p++;
+            while ($this->p < $this->l && $this->json[$this->p] >= '0' && $this->json[$this->p] <= '9') {
+                $this->p++;
+            }
+        }
+
+        if ($this->p < $this->l && $this->json[$this->p] === '.') {
+            $this->p++;
+            while ($this->p < $this->l && $this->json[$this->p] >= '0' && $this->json[$this->p] <= '9') {
+                $this->p++;
+            }
+        }
+
+        if ($this->p < $this->l && strtolower($this->json[$this->p]) === 'e') {
+            $this->p++;
+            if ($this->json[$this->p] === '-' || $this->json[$this->p] === '+') {
+                $this->p++;
+            }
+            while ($this->p < $this->l && $this->json[$this->p] >= '0' && $this->json[$this->p] <= '9') {
+                $this->p++;
+            }
+        }
+        if ($this->p > $start) {
+            $value = substr($this->json, $start, $this->p - $start);
+            return str_contains($value, '.')
+                ? floatval($value)
+                : intval($value);
+        }
+
+        throw new \Exception('excepted number');
     }
 
     /**
