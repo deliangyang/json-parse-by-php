@@ -2,10 +2,10 @@
 
 namespace StateMachine;
 
-interface TokenReader
+interface ReaderInterface
 {
 
-    public function readNextToken(): int;
+    public function nextToken(): int;
 
     public function readBoolean(): bool;
 
@@ -13,6 +13,6 @@ interface TokenReader
 
     public function readString(): string;
 
-    public function readNull(): void;
+    public function readNull(): bool;
 
 }
