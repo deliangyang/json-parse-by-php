@@ -1,5 +1,7 @@
 <?php
 
+namespace StateMachine;
+
 final class Token
 {
     const END = 1;              // end of document

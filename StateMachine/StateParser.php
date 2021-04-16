@@ -1,12 +1,11 @@
 <?php
 
-require_once __DIR__ . '/Token.php';
-
+namespace StateMachine;
 
 class StateParser
 {
 
-    const EXPECT_STRING_VALUE = 0x1;
+    const EXPECT_SINGLE_VALUE = 0x1;
 
     const EXPECT_BEGIN_OBJECT = 0x2;
 
@@ -29,7 +28,7 @@ class StateParser
     const EXPECT_ARRAY_VALUE = 0x400;
 
     protected array $stateMap = [
-        self::EXPECT_STRING_VALUE => 'EXPECT_STRING_VALUE',
+        self::EXPECT_SINGLE_VALUE => 'EXPECT_SINGLE_VALUE',
         self::EXPECT_BEGIN_OBJECT => 'EXPECT_BEGIN_OBJECT',
         self::EXPECT_BEGIN_ARRAY => 'EXPECT_BEGIN_ARRAY',
         self::EXPECT_END_DOCUMENT => 'EXPECT_END_DOCUMENT',
@@ -58,7 +57,7 @@ class StateParser
 
     /**
      * @return string
-     * @throws Exception
+     * @throws \Exception
      */
     public function readString(): string
     {
@@ -103,7 +102,6 @@ class StateParser
     public function nextToken(): int
     {
         for (; ;) {
-            // 如果结束了
             if ($this->l <= $this->p) {
                 return Token::END;
             }
@@ -132,6 +130,8 @@ class StateParser
                 case 'f':
                 case 't':
                     return Token::BOOLEAN;
+                case 'n':
+                    return Token::VALUE_NULL;
             }
             if ($ch >= '0' && $ch <= '9') {
                 $this->p++;
@@ -141,13 +141,13 @@ class StateParser
     }
 
     /**
-     * @throws Exception
+     * @throws \Exception
      */
     public function parser()
     {
         $result = null;
         $stack = [];
-        $this->state = self::EXPECT_STRING_VALUE | self::EXPECT_BEGIN_ARRAY | self::EXPECT_BEGIN_OBJECT;
+        $this->state = self::EXPECT_SINGLE_VALUE | self::EXPECT_BEGIN_ARRAY | self::EXPECT_BEGIN_OBJECT;
         for (; ;) {
             $token = $this->nextToken();
             // echo implode(' => ', [Token::token2name($token), $this->state()]), PHP_EOL;
@@ -232,7 +232,7 @@ class StateParser
                 case Token::NUMBER:
                     break;
                 case Token::STRING:
-                    if ($this->hasState(self::EXPECT_STRING_VALUE)) {
+                    if ($this->hasState(self::EXPECT_SINGLE_VALUE)) {
                         $value = $this->readString();
                         array_push($stack, $value);
                         $this->state = self::EXPECT_END_DOCUMENT;
@@ -260,11 +260,11 @@ class StateParser
                     }
                     throw new \Exception('unexpected string');
                 case Token::BOOLEAN:
-                    if ($this->hasState(self::EXPECT_STRING_VALUE)) {
+                    if ($this->hasState(self::EXPECT_SINGLE_VALUE)) {
                         array_push($stack, $this->readBoolean());
                         $this->state = self::EXPECT_END_DOCUMENT;
                         break;
-                    } else if ($this->hasState(self::EXPECT_ARRAY_VALUE)) {
+                    } else if ($this->hasState(self::EXPECT_OBJECT_VALUE)) {
                         // {'aa': bool,?},
                         $value = $this->readBoolean();
                         $key = array_pop($stack);
@@ -273,7 +273,7 @@ class StateParser
                         array_push($object);
                         $this->state = self::EXPECT_END_OBJECT | self::EXPECT_COMMA;
                         break;
-                    } else if ($this->hasState(self::EXPECT_OBJECT_VALUE)) {
+                    } else if ($this->hasState(self::EXPECT_ARRAY_VALUE)) {
                         $value = $this->readBoolean();
                         $array = array_pop($stack);
                         $array[] = $value;
@@ -283,7 +283,30 @@ class StateParser
                     }
                     throw new \Exception('unexpected boolean.');
                 case Token::VALUE_NULL:
-                    break;
+                    $isNull = $this->readNull();
+                    if ($isNull && $this->hasState(self::EXPECT_SINGLE_VALUE)) {
+                        array_push($stack, null);
+                        $this->state = self::EXPECT_END_DOCUMENT; // self::EXPECT_COMMA | self::EXPECT_END_DOCUMENT | self::EXPECT_END_OBJECT | self::EXPECT_END_ARRAY;
+                        break;
+                    } else if ($isNull && $this->hasState(self::EXPECT_ARRAY_VALUE)) {
+                        $array = array_pop($stack);
+                        $array[] = null;
+                        array_push($stack, $array);
+                        $this->state = self::EXPECT_COMMA | self::EXPECT_END_ARRAY;
+                        break;
+                    } else if ($isNull && $this->hasState(self::EXPECT_OBJECT_VALUE)) {
+                        $key = array_pop($stack);
+                        $obj = array_pop($stack);
+                        $obj[$key] = null;
+                        array_push($stack, $obj);
+                        $this->state = self::EXPECT_COMMA | self::EXPECT_END_OBJECT;
+                        break;
+                    }
+                    throw new \Exception(sprintf(
+                        'expected char NULL , but got %s, current state: %s',
+                        Token::token2name($token),
+                        $this->state()
+                    ));
                 case Token::END:
                     if ($this->hasState(self::EXPECT_END_DOCUMENT)) {
                         $value = array_pop($stack);
@@ -338,6 +361,10 @@ class StateParser
         return $this->state & $state;
     }
 
+    /**
+     * @param string $value
+     * @return bool
+     */
     protected function expect(string $value): bool
     {
         return substr($this->json, $this->p, strlen($value)) === $value;
@@ -345,7 +372,7 @@ class StateParser
 
     /**
      * @return bool
-     * @throws Exception
+     * @throws \Exception
      */
     protected function readBoolean(): bool
     {
@@ -358,6 +385,15 @@ class StateParser
             return false;
         }
         throw new \Exception('except boolean value');
+    }
+
+    protected function readNull(): bool
+    {
+        if ($this->expect('null')) {
+            $this->p += strlen('null');
+            return true;
+        }
+        throw new \Exception('except null value');
     }
 
     /**
@@ -375,24 +411,3 @@ class StateParser
     }
 
 }
-
-//$d = json_encode(true);
-//echo $d, PHP_EOL;
-//$stateParser = new StateParser($d);
-//
-//var_dump($stateParser->parser());
-//$d = json_encode(false);
-//echo $d, PHP_EOL;
-//$stateParser = new StateParser($d);
-//
-//var_dump($stateParser->parser());
-//
-//
-//$d = json_encode(false);
-//echo $d, PHP_EOL;
-$res = json_encode(['a', 'b', 'c', ['a', 'b', ['4', '32', 'ccc', ['cc', 'ddd', 'eee']]]]);
-// $res = json_encode(['a' => 'b', 'c' => 'd', 'e' => ['a', 'b', 'c',], 'cd' => ['d' => 'e']]);
-echo $res, PHP_EOL;
-$stateParser = new StateParser($res);
-
-var_dump($stateParser->parser());
