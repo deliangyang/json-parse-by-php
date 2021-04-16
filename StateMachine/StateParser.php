@@ -73,7 +73,7 @@ class StateParser
                 $ch = $this->json[$this->p++];
                 switch ($ch) {
                     case '"':
-                        $s .= '\"';
+                        $s .= '"';
                         break;
                     case '\\':
                         $s .= '\\';
@@ -291,7 +291,7 @@ class StateParser
                         $key = array_pop($stack);
                         $object = array_pop($stack);
                         $object[$key] = $value;
-                        array_push($object);
+                        array_push($stack, $object);
                         $this->state = self::EXPECT_END_OBJECT | self::EXPECT_COMMA;
                         break;
                     } else if ($this->hasState(self::EXPECT_ARRAY_VALUE)) {
@@ -307,7 +307,7 @@ class StateParser
                     $isNull = $this->readNull();
                     if ($isNull && $this->hasState(self::EXPECT_SINGLE_VALUE)) {
                         array_push($stack, null);
-                        $this->state = self::EXPECT_END_DOCUMENT; // self::EXPECT_COMMA | self::EXPECT_END_DOCUMENT | self::EXPECT_END_OBJECT | self::EXPECT_END_ARRAY;
+                        $this->state = self::EXPECT_END_DOCUMENT;
                         break;
                     } else if ($isNull && $this->hasState(self::EXPECT_ARRAY_VALUE)) {
                         $array = array_pop($stack);

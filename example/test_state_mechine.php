@@ -4,6 +4,8 @@ use StateMachine\StateParser;
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
+$index = intval($argv[1] ?? -1);
+
 $testcases = [
     ['a', 'b', 'c', ['a', 'b', ['4', '32', 'ccc', ['cc', 'ddd', 'eee']]]],
     ['a' => 'b', 'c' => 'd', 'e' => ['a', 'b', 'c',], 'cd' => ['d' => 'e']],
@@ -25,12 +27,21 @@ $testcases = [
     [-12.3, 2.e3, 33e2,],
 ];
 
-foreach ($testcases as $testcase) {
+foreach ($testcases as $idx => $testcase) {
+    if ($index >= 0 && $idx !== $index) {
+        continue;
+    }
     $case = json_encode($testcase);
     $stateParser = new StateParser($case);
     try {
         $result = $stateParser->parser();
-        assert($case === $result);
+        if ($testcase !== $result) {
+            echo sprintf("case: \033[0;31m%s\033[0m, origin: \033[0;31m%s\033[0m, data: %s",
+                $case,
+                var_export($testcase, true),
+                var_export($result, true),
+            ), PHP_EOL;
+        }
     } catch (\Exception $ex) {
         echo $case, PHP_EOL;
         echo $ex->getMessage(), PHP_EOL;

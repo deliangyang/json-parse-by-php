@@ -31,9 +31,19 @@ $testcases = [
 
 $toJSON = new ToJson();
 foreach ($testcases as $testcase) {
+    $origin = json_encode($testcase);
     $res = $toJSON->stringify($testcase);
-    assert(json_encode($res) === $res);
+    if ($origin !== $res) {
+        echo $origin, PHP_EOL;
+        echo $res, PHP_EOL;
+        echo str_repeat('-', 100), PHP_EOL;
+    }
+    $origin = json_encode($testcase, JSON_PRETTY_PRINT);
     $res = $toJSON->stringify($testcase, true);
-    assert(json_encode($res, JSON_PRETTY_PRINT) === $res);
+    if ($origin !== $res) {
+        echo $origin, PHP_EOL;
+        echo $res, PHP_EOL;
+        echo str_repeat('-', 100), PHP_EOL;
+    }
 }
 

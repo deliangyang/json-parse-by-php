@@ -4,6 +4,9 @@ namespace Parser;
 
 class ToJson
 {
+
+    protected bool $pretty = false;
+
     /**
      * @param $obj
      * @param bool $pretty
@@ -13,6 +16,7 @@ class ToJson
     public function stringify($obj, bool $pretty = false): string|bool|int|float|null
     {
         $indent = 0;
+        $this->pretty = $pretty;
         return $this->encode($obj, $indent, $pretty);
     }
 
@@ -56,23 +60,23 @@ class ToJson
         $indent++;
         $start = 0;
         foreach ($obj as $k => $value) {
-            if ($start > 0 && $k === $start) {
+            if ($start >= 0 && $k === $start) {
                 $itemType = 'array';
                 $subItems[] = $this->encode($value, $indent, $pretty);
                 $start++;
             } else {
                 $start = -1;
-                $subItems[] = sprintf('"%s": %s', $k, $this->encode($value, $indent, $pretty));
+                $subItems[] = sprintf('"%s":%s%s', $k, $this->whiteSpaces(), $this->encode($value, $indent, $pretty));
             }
         }
         if (!$pretty) {
             return 'object' === $itemType
-                ? '{' . implode(', ', $subItems) . '}'
-                : '[' . implode(', ', $subItems) . ']';
+                ? '{' . implode(',' . $this->whiteSpaces(), $subItems) . '}'
+                : '[' . implode(',' . $this->whiteSpaces(), $subItems) . ']';
         }
         $prefix = $this->indent($indent);
         $shortPrefix = $this->indent($indent - 1);
-        $itemStr = implode(', ' . PHP_EOL . $prefix, $subItems);
+        $itemStr = implode(',' . PHP_EOL . $prefix, $subItems);
 
         $result = 'object' === $itemType
             ? '{' . PHP_EOL . $prefix . $itemStr . PHP_EOL . $shortPrefix . '}'
@@ -87,7 +91,14 @@ class ToJson
      */
     protected function indent(int $indent): string
     {
-        return str_repeat("  ", $indent);
+        return str_repeat("    ", $indent);
+    }
+
+    protected function whiteSpaces(): string
+    {
+        return $this->pretty
+            ? ' '
+            : '';
     }
 
 }
