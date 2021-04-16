@@ -1,12 +1,14 @@
 <?php
 
+namespace Parser;
+
 class ToJson
 {
     /**
      * @param $obj
      * @param bool $pretty
      * @return string|bool|int|float|null
-     * @throws Exception
+     * @throws \Exception
      */
     public function stringify($obj, bool $pretty = false): string|bool|int|float|null
     {
@@ -33,7 +35,7 @@ class ToJson
      * @param int $indent
      * @param bool $pretty
      * @return float|int|string
-     * @throws Exception
+     * @throws \Exception
      */
     protected function encode($obj, int &$indent, bool $pretty = false): string|float|int
     {

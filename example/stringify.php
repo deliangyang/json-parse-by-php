@@ -1,15 +1,12 @@
 <?php
 
-require_once __DIR__ . '/../ToJson.php';
+require_once __DIR__ . '/../vendor/autoload.php';
 
-try {
-    $toJSON = new ToJson();
-    $res = $toJSON->stringify([1, 2, 4.3, 3, ['a' => 'b', 'c' => 1, 'd' => [1, 2, 3]]]);
-    echo $res, PHP_EOL;
-    echo PHP_EOL;
-    var_dump(json_decode($res, true));
-    echo PHP_EOL;
-    $res = $toJSON->stringify([
+use Parser\ToJson;
+
+$testcases = [
+    [1, 2, 4.3, 3, ['a' => 'b', 'c' => 1, 'd' => [1, 2, 3]]],
+    [
         'a' => 2.3,
         'b' => false,
         'd' => true,
@@ -29,10 +26,14 @@ try {
             ],
         ]],
         'string' => 'sfsadf"sdfsadfsf'
-    ], true);
-    echo $res, PHP_EOL;
-    echo PHP_EOL;
-    var_dump(json_decode($res, true));
-} catch (\Exception $ex) {
-    var_dump($ex->getMessage());
+    ],
+];
+
+$toJSON = new ToJson();
+foreach ($testcases as $testcase) {
+    $res = $toJSON->stringify($testcase);
+    assert(json_encode($res) === $res);
+    $res = $toJSON->stringify($testcase, true);
+    assert(json_encode($res, JSON_PRETTY_PRINT) === $res);
 }
+
