@@ -41,104 +41,13 @@ class StateParser
         self::EXPECT_ARRAY_VALUE => 'EXPECT_ARRAY_VALUE',
     ];
 
-    protected string $json;
-
-    protected int $p = 0;
-
-    protected int $l;
-
     protected $state = 0;
+
+    protected Reader $reader;
 
     public function __construct(string $json)
     {
-        $this->json = $json;
-        $this->l = strlen($this->json);
-    }
-
-    /**
-     * @return string
-     * @throws \Exception
-     */
-    public function readString(): string
-    {
-        $ch = $this->json[$this->p];
-        if ('"' !== $ch) {
-            throw new \Exception('expect " but actual is :' . $ch);
-        }
-        $this->p++;
-        $s = '';
-        for (; ;) {
-            $ch = $this->json[$this->p++];
-            if ('\\' === $ch) {
-                $ch = $this->json[$this->p++];
-                switch ($ch) {
-                    case '"':
-                        $s .= '"';
-                        break;
-                    case '\\':
-                        $s .= '\\';
-                        break;
-                    case '/':
-                        $s .= '/';
-                        break;
-                    case 'b':
-                        $s .= '\b';
-                        break;
-                    default:
-                        throw new \Exception('unexpected char: ' . $ch);
-
-                }
-            } else if ('"' === $ch) {
-                break;
-            } else if ("\r" === $ch || "\n" === $ch) {
-                throw new \Exception('Unexpect char: ' . "\\$ch");
-            } else {
-                $s .= $ch;
-            }
-        }
-        return $s;
-    }
-
-    public function nextToken(): int
-    {
-        for (; ;) {
-            if ($this->l <= $this->p) {
-                return Token::END;
-            }
-            $ch = $this->json[$this->p];
-            switch ($ch) {
-                case '{':
-                    $this->p++;
-                    return Token::OBJECT_BEGIN;
-                case '}':
-                    $this->p++;
-                    return Token::OBJECT_END;
-                case '[':
-                    $this->p++;
-                    return Token::ARRAY_BEGIN;
-                case ']':
-                    $this->p++;
-                    return Token::ARRAY_END;
-                case ',':
-                    $this->p++;
-                    return Token::COMMA;
-                case ':':
-                    $this->p++;
-                    return Token::COLON;
-                case '"':
-                    return Token::STRING;
-                case 'f':
-                case 't':
-                    return Token::BOOLEAN;
-                case 'n':
-                    return Token::VALUE_NULL;
-                case '-':
-                    return Token::NUMBER;
-            }
-            if ($ch >= '0' && $ch <= '9') {
-                return Token::NUMBER;
-            }
-        }
+        $this->reader = new Reader($json);
     }
 
     /**
@@ -150,15 +59,13 @@ class StateParser
         $stack = [];
         $this->state = self::EXPECT_SINGLE_VALUE | self::EXPECT_BEGIN_ARRAY | self::EXPECT_BEGIN_OBJECT;
         for (; ;) {
-            $token = $this->nextToken();
+            $token = $this->reader->nextToken();
             // echo implode(' => ', [Token::token2name($token), $this->state()]), PHP_EOL;
             switch ($token) {
                 case Token::OBJECT_BEGIN:
                     if ($this->hasState(self::EXPECT_BEGIN_OBJECT)) {
                         /**
-                         * {{
-                         * { "a"
-                         * {}
+                         * {{ | { "a" | {}
                          */
                         array_push($stack, []);
                         $this->state = self::EXPECT_OBJECT_KEY | self::EXPECT_BEGIN_OBJECT | self::EXPECT_END_OBJECT;
@@ -232,18 +139,18 @@ class StateParser
                     ));
                 case Token::NUMBER:
                     if ($this->hasState(self::EXPECT_SINGLE_VALUE)) {
-                        array_push($stack, $this->readNumber());
+                        array_push($stack, $this->reader->readNumber());
                         $this->state = self::EXPECT_END_DOCUMENT;
                         break;
                     } else if ($this->hasState(self::EXPECT_ARRAY_VALUE)) {
-                        $number = $this->readNumber();
+                        $number = $this->reader->readNumber();
                         $array = array_pop($stack);
                         $array[] = $number;
                         array_push($stack, $array);
                         $this->state = self::EXPECT_COMMA | self::EXPECT_END_ARRAY;
                         break;
                     } else if ($this->hasState(self::EXPECT_OBJECT_VALUE)) {
-                        $number = $this->readNumber();
+                        $number = $this->reader->readNumber();
                         $key = array_pop($stack);
                         $object = array_pop($stack);
                         $object[$key] = $number;
@@ -254,24 +161,24 @@ class StateParser
                     break;
                 case Token::STRING:
                     if ($this->hasState(self::EXPECT_SINGLE_VALUE)) {
-                        $value = $this->readString();
+                        $value = $this->reader->readString();
                         array_push($stack, $value);
                         $this->state = self::EXPECT_END_DOCUMENT;
                         break;
                     } else if ($this->hasState(self::EXPECT_ARRAY_VALUE)) {
-                        $str = $this->readString();
+                        $str = $this->reader->readString();
                         $array = array_pop($stack);
                         $array[] = $str;
                         array_push($stack, $array);
                         $this->state = self::EXPECT_COMMA | self::EXPECT_END_ARRAY;
                         break;
                     } else if ($this->hasState(self::EXPECT_OBJECT_KEY)) {
-                        $value = $this->readString();
+                        $value = $this->reader->readString();
                         array_push($stack, $value);
                         $this->state = self::EXPECT_COLON;
                         break;
                     } else if ($this->hasState(self::EXPECT_OBJECT_VALUE)) {
-                        $value = $this->readString();
+                        $value = $this->reader->readString();
                         $key = array_pop($stack);
                         $object = array_pop($stack);
                         $object[$key] = $value;
@@ -282,12 +189,12 @@ class StateParser
                     throw new \Exception('unexpected string');
                 case Token::BOOLEAN:
                     if ($this->hasState(self::EXPECT_SINGLE_VALUE)) {
-                        array_push($stack, $this->readBoolean());
+                        array_push($stack, $this->reader->readBoolean());
                         $this->state = self::EXPECT_END_DOCUMENT;
                         break;
                     } else if ($this->hasState(self::EXPECT_OBJECT_VALUE)) {
                         // {'aa': bool,?},
-                        $value = $this->readBoolean();
+                        $value = $this->reader->readBoolean();
                         $key = array_pop($stack);
                         $object = array_pop($stack);
                         $object[$key] = $value;
@@ -295,7 +202,7 @@ class StateParser
                         $this->state = self::EXPECT_END_OBJECT | self::EXPECT_COMMA;
                         break;
                     } else if ($this->hasState(self::EXPECT_ARRAY_VALUE)) {
-                        $value = $this->readBoolean();
+                        $value = $this->reader->readBoolean();
                         $array = array_pop($stack);
                         $array[] = $value;
                         array_push($array);
@@ -304,7 +211,7 @@ class StateParser
                     }
                     throw new \Exception('unexpected boolean.');
                 case Token::VALUE_NULL:
-                    $isNull = $this->readNull();
+                    $isNull = $this->reader->readNull();
                     if ($isNull && $this->hasState(self::EXPECT_SINGLE_VALUE)) {
                         array_push($stack, null);
                         $this->state = self::EXPECT_END_DOCUMENT;
@@ -380,80 +287,6 @@ class StateParser
     protected function hasState(int $state): bool
     {
         return $this->state & $state;
-    }
-
-    /**
-     * @param string $value
-     * @return bool
-     */
-    protected function expect(string $value): bool
-    {
-        return substr($this->json, $this->p, strlen($value)) === $value;
-    }
-
-    /**
-     * @return bool
-     * @throws \Exception
-     */
-    protected function readBoolean(): bool
-    {
-        $ch = $this->json[$this->p];
-        if ('t' === $ch && $this->expect('true')) {
-            $this->p += strlen('true');
-            return true;
-        } else if ('f' === $ch && $this->expect('false')) {
-            $this->p += strlen('false');
-            return false;
-        }
-        throw new \Exception('except boolean value');
-    }
-
-    protected function readNull(): bool
-    {
-        if ($this->expect('null')) {
-            $this->p += strlen('null');
-            return true;
-        }
-        throw new \Exception('except null value');
-    }
-
-    protected function readNumber(): int|float
-    {
-        $start = $this->p;
-        if ($this->json[$this->p] === '-') $this->p++;
-        if ($this->json[$this->p] === '0') {
-            $this->p++;
-        } else if ($this->json[$this->p] >= '1' && $this->json[$this->p] <= '9') {
-            $this->p++;
-            while ($this->p < $this->l && $this->json[$this->p] >= '0' && $this->json[$this->p] <= '9') {
-                $this->p++;
-            }
-        }
-
-        if ($this->p < $this->l && $this->json[$this->p] === '.') {
-            $this->p++;
-            while ($this->p < $this->l && $this->json[$this->p] >= '0' && $this->json[$this->p] <= '9') {
-                $this->p++;
-            }
-        }
-
-        if ($this->p < $this->l && strtolower($this->json[$this->p]) === 'e') {
-            $this->p++;
-            if ($this->json[$this->p] === '-' || $this->json[$this->p] === '+') {
-                $this->p++;
-            }
-            while ($this->p < $this->l && $this->json[$this->p] >= '0' && $this->json[$this->p] <= '9') {
-                $this->p++;
-            }
-        }
-        if ($this->p > $start) {
-            $value = substr($this->json, $start, $this->p - $start);
-            return str_contains($value, '.')
-                ? floatval($value)
-                : intval($value);
-        }
-
-        throw new \Exception('excepted number');
     }
 
     /**
